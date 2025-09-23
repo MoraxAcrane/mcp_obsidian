@@ -1,152 +1,172 @@
-# Obsidian AI MCP Server ✨
+# 🧠 Enhanced Obsidian MCP Server
 
-An advanced MCP (Model Context Protocol) server that provides **AI-optimized tools** for intelligent knowledge management in Obsidian vaults. Features both basic CRUD operations and enhanced AI-powered capabilities.
+**AI-Powered Model Context Protocol Server для интеграции Obsidian с ИИ-ассистентами**
 
-## 🆕 **Enhanced Version Available!**
-- **12+ tools** including 6 new AI-optimized instruments  
-- **Rich metadata** and analytics for better AI understanding
-- **Smart creation** with auto-tagging and connection suggestions
-- **Vault health analysis** and recommendations
-- **Detailed AI usage guides** and system prompts
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://github.com/modelcontextprotocol)
 
-## Install
+---
 
+## ✨ Особенности
+
+- 🔍 **Умный поиск** с многоязычной поддержкой (русский/английский)
+- 🤖 **AI-оптимизированные инструменты** для работы с заметками
+- ⚡ **Быстрая индексация** содержимого заметок
+- 🔗 **Анализ связей** между заметками
+- 🎯 **Контекстуальный поиск** с пониманием намерений
+- 🛡️ **Безопасность** - все данные остаются локально
+
+---
+
+## 🚀 Быстрая установка
+
+### 1. Клонируйте репозиторий
+```bash
+git clone https://github.com/your-username/obsidian-mcp-server.git
+cd obsidian-mcp-server
+```
+
+### 2. Установите зависимости
 ```bash
 pip install -e .
 ```
 
-## Configure
-
-Create `obsidian_mcp_config.yaml` in your project root (or set `OBSIDIAN_MCP_CONFIG` env var).
-
+### 3. Настройте конфигурацию
+Создайте `obsidian_mcp_config.yaml`:
 ```yaml
 vault:
-  path: "C:/path/to/your/ObsidianVault"
-  templates_folder: "Templates"
-  daily_notes_folder: "Daily Notes"
-  attachments_folder: "Attachments"
+  path: 'C:\path\to\your\Obsidian Vault'
 ```
 
-If omitted, the server falls back to `./vault` (auto-created) or `OBSIDIAN_VAULT_PATH`.
-
-## Run
-
-- Stdio (default):
+### 4. Запустите сервер
 ```bash
-obsidian-ai-mcp
+python start.py
 ```
 
-- SSE:
+**Альтернативные способы запуска:**
 ```bash
-obsidian-ai-mcp --transport sse --port 8000
+# Прямая команда
+obsidian-ai-mcp --config obsidian_mcp_config.yaml
+
+# Как модуль Python
+python -m obsidian_mcp.server --config obsidian_mcp_config.yaml
 ```
 
-- Streamable HTTP:
-```bash
-obsidian-ai-mcp --transport streamable-http --port 8000
-```
+---
 
-## 🛠️ Available Versions
+## 🛠️ Доступные инструменты
 
-### 🚀 **Enhanced Server** (Recommended)
-```bash
-start-enhanced.bat          # Windows - Enhanced version
-python enhanced_run.py      # Cross-platform
-```
+### 📝 Базовые операции
+- `list_notes` - Список последних заметок (с безопасными лимитами)
+- `create_note` - Создание новой заметки
+- `read_note` - Чтение заметки с метаданными
+- `update_note` - Обновление содержимого заметки
+- `delete_note` - Удаление заметки
+- `create_link` - Создание связей между заметками
 
-**🆕 New AI-Optimized Tools:**
-- `vault_overview` - comprehensive vault analytics & health metrics  
-- `read_note_enhanced` - rich metadata (word count, links, structure, dates)
-- `create_note_smart` - auto-tagging, folder suggestions, connection recommendations
-- `note_exists` - existence check with similar note suggestions
-- `append_to_note` - smart content addition with formatting & timestamps  
-- `create_folder` - structured folder creation with index templates
+### 🔍 Умный поиск
+- `explore_notes` - Интеллектуальный поиск с:
+  - Многоязычной поддержкой (русский ↔ английский)
+  - Индексацией содержимого
+  - Морфологическими вариантами
+  - Оценкой релевантности
+  - Превью содержимого
 
-### 📄 **Basic Server** (Compatible) 
-```bash
-start.bat                   # Windows - Basic version  
-python simple_run.py        # Lightweight version
-```
+---
 
-**Basic Tools:**
-- `list_notes(folder?, limit?)` - list notes in vault
-- `create_note(title, content, tags?, folder?)` - create new note
-- `read_note(title, include_backlinks?, include_outlinks?)` - read note content
-- `update_note(title, content?, append?, section?)` - update existing note  
-- `delete_note(title)` - remove note
-- `create_link(from_note, to_note, context?, bidirectional?)` - connect notes
+## 🎯 Интеграция с ИИ-ассистентами
 
-## 💡 AI Integration (Cursor/Claude)
-
-### Enhanced Server (Recommended):
+### Cursor IDE
+Добавьте в `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "obsidian-enhanced-mcp": {
+    "obsidian": {
       "command": "python",
-      "args": ["-c", "from obsidian_mcp.enhanced_server import main; import asyncio; asyncio.run(main())", "--config", "obsidian_mcp_config.yaml"],
-      "type": "stdio",
-      "cwd": "/path/to/mcp_obsidian"
+      "args": ["-m", "obsidian_mcp.server", "--config", "obsidian_mcp_config.yaml"],
+      "cwd": "/path/to/obsidian-mcp-server"
     }
   }
 }
 ```
 
-### Basic Server (Compatible):
+### Claude Desktop
+Добавьте в `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "obsidian-ai-mcp": {
-      "command": "obsidian-ai-mcp", 
-      "args": ["--config", "obsidian_mcp_config.yaml"],
-      "type": "stdio"
+    "obsidian": {
+      "command": "obsidian-ai-mcp",
+      "args": ["--config", "obsidian_mcp_config.yaml"]
     }
   }
 }
 ```
 
-### 🤖 For AI Developers:
-See [`AI_USAGE_GUIDE.md`](AI_USAGE_GUIDE.md) for:
-- System prompts optimized for AI understanding
-- Detailed tool descriptions with use cases
-- Workflow patterns and best practices
-- Metrics and quality guidelines
+---
 
-## 🚀 Quick Start
+## 📁 Структура проекта
 
-### 1. Install & Test:
-```bash
-pip install -e .
-python test_enhanced_client.py    # Test enhanced features
-# OR
-python test_regular_client.py     # Test basic features
+```
+obsidian-mcp-server/
+├── src/obsidian_mcp/           # Основной код
+│   ├── server.py               # MCP сервер
+│   ├── smart_search.py         # Умный поиск
+│   └── utils/                  # Вспомогательные утилиты
+├── tests/                      # Тесты
+├── start.py                    # Простой запускатель
+├── obsidian_mcp_config.yaml    # Конфигурация
+└── README.md                   # Документация
 ```
 
-### 2. Run Server:
-```bash
-# Enhanced (recommended)
-start-enhanced.bat
-# OR  
-python enhanced_run.py
+---
 
-# Basic/Simple versions  
-start.bat
-start-simple.bat
-```
+## 🔐 Безопасность
 
-### 3. Configuration:
-```yaml
-# obsidian_mcp_config.yaml
-vault:
-  path: "C:/path/to/your/ObsidianVault"
-  templates_folder: "Templates"
-  daily_notes_folder: "Daily Notes" 
-  attachments_folder: "Attachments"
-```
+**Оценка безопасности: ВЫСОКАЯ** ✅
 
-## 📚 Documentation
+- ✅ **Локальные данные**: Все операции только в пределах Obsidian vault
+- ✅ **Нет сетевых запросов**: Работает только локально
+- ✅ **Изоляция путей**: Невозможен доступ к системным файлам
+- ✅ **Безопасные лимиты**: Защита от перегрузки
+- ✅ **Открытый код**: Весь исходный код доступен для аудита
 
-- [`AI_USAGE_GUIDE.md`](AI_USAGE_GUIDE.md) - System prompts & AI optimization
-- [`enhancement_roadmap.md`](enhancement_roadmap.md) - Future development plans
-- [`SOLUTION_LIGHTWEIGHT.md`](SOLUTION_LIGHTWEIGHT.md) - Troubleshooting guide
-- [`FINAL_SOLUTION.md`](FINAL_SOLUTION.md) - Complete setup guide
+[Подробный анализ безопасности](MCP_SECURITY_ANALYSIS.md)
+
+---
+
+## 📚 Документация
+
+- [Концепция проекта](obsidian_mcp_concept.md) - Архитектура и идеи
+- [История проекта](PROJECT_CONTEXT_HISTORY.md) - Журнал изменений
+- [План развития](PHASE_2_DETAILED_PLAN.md) - Следующие этапы
+- [Анализ безопасности](MCP_SECURITY_ANALYSIS.md) - Детальная оценка
+
+---
+
+## 🤝 Участие в разработке
+
+1. Форкните репозиторий
+2. Создайте ветку для новой функции (`git checkout -b feature/amazing-feature`)
+3. Зафиксируйте изменения (`git commit -m 'Add amazing feature'`)
+4. Отправьте в ветку (`git push origin feature/amazing-feature`)
+5. Создайте Pull Request
+
+---
+
+## 📄 Лицензия
+
+Этот проект распространяется под лицензией MIT. См. файл [LICENSE](LICENSE) для подробностей.
+
+---
+
+## 💡 Благодарности
+
+- [Model Context Protocol](https://github.com/modelcontextprotocol) - Основа для интеграции
+- [Obsidian](https://obsidian.md) - Платформа для управления знаниями
+- [FastMCP](https://github.com/pydantic/fastmcp) - Быстрое создание MCP серверов
+
+---
+
+**🚀 Начните использовать Enhanced Obsidian MCP Server уже сегодня!**
