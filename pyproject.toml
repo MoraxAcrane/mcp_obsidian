@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obsidian-ai-mcp"
+version = "0.1.0"
+description = "AI-powered MCP server for Obsidian vaults"
+authors = [{ name = "AI Assistant" }]
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=0.4.0",
+    "PyYAML>=6.0.1", 
+    "python-frontmatter>=1.1.0",
+]
+
+[project.scripts]
+obsidian-ai-mcp = "obsidian_mcp.server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["obsidian_mcp*"]
