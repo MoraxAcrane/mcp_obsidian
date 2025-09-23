@@ -19,39 +19,41 @@
 
 ---
 
-## 🚀 Быстрая установка
+## 🚀 Простая установка за 2 минуты
 
-### 1. Клонируйте репозиторий
+### 🎯 Способ 1: Интерактивная установка (рекомендуется)
 ```bash
+# 1. Склонируйте репозиторий
 git clone https://github.com/your-username/obsidian-mcp-server.git
 cd obsidian-mcp-server
+
+# 2. Запустите мастер установки
+python setup.py
 ```
 
-### 2. Установите зависимости
+**Скрипт автоматически:**
+- ✅ Проверит системные требования
+- ✅ Установит все зависимости
+- ✅ Поможет найти ваш Obsidian Vault
+- ✅ Создаст конфигурационный файл  
+- ✅ Протестирует работоспособность
+- ✅ **Выдаст готовый JSON для вставки в Cursor/Claude!**
+
+### 🛠️ Способ 2: Ручная установка
 ```bash
+# 1. Установка
+git clone https://github.com/your-username/obsidian-mcp-server.git
+cd obsidian-mcp-server
 pip install -e .
-```
 
-### 3. Настройте конфигурацию
-Создайте `obsidian_mcp_config.yaml`:
-```yaml
-vault:
-  path: 'C:\path\to\your\Obsidian Vault'
-```
+# 2. Конфигурация
+echo "vault:\n  path: 'C:\path\to\your\Obsidian Vault'" > obsidian_mcp_config.yaml
 
-### 4. Запустите сервер
-```bash
+# 3. Запуск
 python start.py
 ```
 
-**Альтернативные способы запуска:**
-```bash
-# Прямая команда
-obsidian-ai-mcp --config obsidian_mcp_config.yaml
-
-# Как модуль Python
-python -m obsidian_mcp.server --config obsidian_mcp_config.yaml
-```
+[📥 Подробная инструкция по установке](INSTALLATION_GUIDE.md)
 
 ---
 
@@ -77,32 +79,37 @@ python -m obsidian_mcp.server --config obsidian_mcp_config.yaml
 
 ## 🎯 Интеграция с ИИ-ассистентами
 
+**💡 Конфигурации автоматически генерируются скриптом `setup.py`**
+
 ### Cursor IDE
-Добавьте в `.cursor/mcp.json`:
+Файл: `.cursor/mcp.json`
 ```json
 {
   "mcpServers": {
     "obsidian": {
-      "command": "python",
-      "args": ["-m", "obsidian_mcp.server", "--config", "obsidian_mcp_config.yaml"],
-      "cwd": "/path/to/obsidian-mcp-server"
+      "command": "obsidian-ai-mcp",
+      "args": ["--config", "obsidian_mcp_config.yaml"],
+      "cwd": "/path/to/your/project"
     }
   }
 }
 ```
 
 ### Claude Desktop
-Добавьте в `claude_desktop_config.json`:
+Файл: `claude_desktop_config.json`  
 ```json
 {
   "mcpServers": {
     "obsidian": {
       "command": "obsidian-ai-mcp",
-      "args": ["--config", "obsidian_mcp_config.yaml"]
+      "args": ["--config", "obsidian_mcp_config.yaml"],
+      "cwd": "/path/to/your/project"
     }
   }
 }
 ```
+
+> 🎯 **Скрипт `setup.py` автоматически сгенерирует правильные пути!**
 
 ---
 
@@ -138,6 +145,9 @@ obsidian-mcp-server/
 
 ## 📚 Документация
 
+- [📥 Руководство по установке](INSTALLATION_GUIDE.md) - Подробная инструкция
+- [🚀 Пример быстрого старта](QUICK_START_EXAMPLE.md) - Пошаговый пример
+- [🎬 Демонстрация](demo.py) - Запустите `python demo.py`
 - [Концепция проекта](obsidian_mcp_concept.md) - Архитектура и идеи
 - [История проекта](PROJECT_CONTEXT_HISTORY.md) - Журнал изменений
 - [План развития](PHASE_2_DETAILED_PLAN.md) - Следующие этапы
