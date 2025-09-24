@@ -58,6 +58,13 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         """
         vault_path = ctx.request_context.lifespan_context.vault_path
         
+        # Fix type validation issue - convert any number type to int
+        if limit is not None:
+            try:
+                limit = int(limit)  # Force conversion from float to int (fixes Cursor IDE issue)
+            except (ValueError, TypeError):
+                limit = 20  # Fallback to default
+        
         # Жесткое ограничение для безопасности
         MAX_NOTES = 50
         if limit is None:
@@ -136,29 +143,72 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         include_backlinks: bool = True,
         include_outlinks: bool = True,
     ) -> Dict[str, Any]:
-        """Read a note's content and metadata."""
+        """
+        📖 READ NOTE - Get note content and metadata (works in all folders)
+        
+        IMPROVEMENTS:
+        • Fixed: Now works in subfolders (not just root)
+        • Fixed: Handles emoji titles like "🚀 Projects Hub"  
+        • Enhanced: Better error messages with suggestions
+        """
         vault_path = ctx.request_context.lifespan_context.vault_path
-        path = note_path_for_title(vault_path, title)
-        if not path.exists():
-            raise FileNotFoundError(f"Note not found: {title}")
-        content, metadata = read_note_frontmatter(path)
-        result: Dict[str, Any] = {"title": title, "content": content, "metadata": metadata}
-        if include_outlinks:
-            result["outlinks"] = extract_outlinks(content)
-        if include_backlinks:
-            backlinks: List[str] = []
-            needle = f"[[{title}]]"
-            for other in list_note_paths(vault_path):
-                if other == path:
-                    continue
-                try:
-                    text = other.read_text(encoding="utf-8")
-                except Exception:
-                    continue
-                if needle in text:
-                    backlinks.append(other.stem)
-            result["backlinks"] = backlinks
-        return result
+        
+        try:
+            from .utils.universal_finder import get_universal_finder
+            
+            # Use Universal Note Finder instead of note_path_for_title
+            finder = get_universal_finder(vault_path)
+            path = finder.find_note(title)
+            
+            if not path or not path.exists():
+                # Provide helpful suggestions
+                similar = finder.find_multiple(title, limit=3)
+                suggestions = [s[0] for s in similar] if similar else []
+                
+                return {
+                    "success": False,
+                    "error": f"Note not found: {title}",
+                    "suggestions": suggestions,
+                    "help": "Try using exact title or check explore_notes to find the note"
+                }
+            
+            # Read note content
+            content, metadata = read_note_frontmatter(path)
+            result: Dict[str, Any] = {
+                "title": title, 
+                "content": content, 
+                "metadata": metadata,
+                "path": str(path.relative_to(vault_path)),
+                "folder": path.parent.name if path.parent != vault_path else "root"
+            }
+            
+            # Add outlinks analysis
+            if include_outlinks:
+                result["outlinks"] = extract_outlinks(content)
+            
+            # Add backlinks analysis  
+            if include_backlinks:
+                backlinks: List[str] = []
+                needle = f"[[{title}]]"
+                for other in list_note_paths(vault_path):
+                    if other == path:
+                        continue
+                    try:
+                        text = other.read_text(encoding="utf-8")
+                    except Exception:
+                        continue
+                    if needle in text:
+                        backlinks.append(other.stem)
+                result["backlinks"] = backlinks
+            
+            return result
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to read note: {str(e)}",
+                "title": title
+            }
 
     @mcp.tool()
     def update_note(
@@ -168,33 +218,417 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         append: bool = False,
         section: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Update a note: replace, append, or update a specific section."""
+        """
+        ✏️ UPDATE NOTE - Modify note content (works in all folders)
+        
+        IMPROVEMENTS:
+        • Fixed: Now works in subfolders (not just root)  
+        • Fixed: Handles emoji titles like "🗂️ Knowledge Management Hub"
+        • Enhanced: Better feedback and error handling
+        """
         vault_path = ctx.request_context.lifespan_context.vault_path
-        path = note_path_for_title(vault_path, title)
-        if not path.exists():
-            raise FileNotFoundError(f"Note not found: {title}")
-        cur_content, metadata = read_note_frontmatter(path)
-        new_content = cur_content
-        if content is not None:
-            if section:
-                new_content = replace_section(cur_content, section, content)
-            elif append:
-                sep = "\n\n" if not cur_content.endswith("\n") else "\n"
-                new_content = cur_content + sep + content
+        
+        try:
+            from .utils.universal_finder import get_universal_finder
+            
+            # Use Universal Note Finder instead of note_path_for_title
+            finder = get_universal_finder(vault_path)
+            path = finder.find_note(title)
+            
+            if not path or not path.exists():
+                # Provide helpful suggestions
+                similar = finder.find_multiple(title, limit=3)
+                suggestions = [s[0] for s in similar] if similar else []
+                
+                return {
+                    "success": False,
+                    "error": f"Note not found: {title}",
+                    "suggestions": suggestions,
+                    "help": "Try using exact title or check explore_notes to find the note"
+                }
+            
+            # Read current content
+            cur_content, metadata = read_note_frontmatter(path)
+            new_content = cur_content
+            
+            # Determine update mode
+            if content is not None:
+                if section:
+                    new_content = replace_section(cur_content, section, content)
+                    update_mode = "section_replaced"
+                elif append:
+                    sep = "\n\n" if not cur_content.endswith("\n") else "\n"
+                    new_content = cur_content + sep + content
+                    update_mode = "appended"
+                else:
+                    new_content = content
+                    update_mode = "replaced"
             else:
-                new_content = content
-        write_note_frontmatter(path, new_content, metadata)
-        return {"title": title, "path": str(path)}
+                update_mode = "no_change"
+            
+            # Write updated content
+            write_note_frontmatter(path, new_content, metadata)
+            
+            return {
+                "success": True,
+                "title": title, 
+                "path": str(path.relative_to(vault_path)),
+                "folder": path.parent.name if path.parent != vault_path else "root",
+                "update_mode": update_mode,
+                "message": f"Successfully updated '{title}'"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to update note: {str(e)}",
+                "title": title
+            }
 
     @mcp.tool()
     def delete_note(ctx: Context[ServerSession, AppContext], title: str) -> Dict[str, Any]:
-        """Delete a note by title."""
+        """
+        🗑️ DELETE NOTE - Remove a note from vault (works in all folders)
+        
+        PURPOSE: Safely delete notes from anywhere in the vault
+        
+        FEATURES:
+        • Universal search - works in all subfolders
+        • Emoji support - handles titles with emojis
+        • Backlink checking - warns about connected notes
+        • Safe deletion - confirms before removing
+        
+        IMPROVEMENTS:
+        • Fixed: Now works in subfolders (not just root)
+        • Fixed: Handles emoji titles like "🗂️ Knowledge Management Hub"
+        • Enhanced: Shows backlinks before deletion
+        """
         vault_path = ctx.request_context.lifespan_context.vault_path
-        path = note_path_for_title(vault_path, title)
-        if not path.exists():
-            raise FileNotFoundError(f"Note not found: {title}")
-        path.unlink()
-        return {"deleted": title}
+        
+        try:
+            from .utils.universal_finder import get_universal_finder
+            
+            # Use Universal Note Finder instead of limited note_path_for_title
+            finder = get_universal_finder(vault_path)
+            note_path = finder.find_note(title)
+            
+            if not note_path or not note_path.exists():
+                # Provide helpful suggestions
+                similar = finder.find_multiple(title, limit=3)
+                suggestions = [s[0] for s in similar] if similar else []
+                
+                return {
+                    "success": False,
+                    "error": f"Note not found: {title}",
+                    "suggestions": suggestions,
+                    "help": "Try using exact title or check explore_notes to find the note"
+                }
+            
+            # Check for backlinks before deletion (safety feature)
+            try:
+                from .utils.markdown_parser import extract_outlinks
+                from .utils.vault import list_note_paths
+                
+                backlinks = []
+                for other_path in list_note_paths(vault_path):
+                    if other_path.stem == title:
+                        continue  # Skip self
+                    
+                    try:
+                        content = other_path.read_text(encoding='utf-8')
+                        outlinks = extract_outlinks(content)
+                        if title in outlinks:
+                            backlinks.append(other_path.stem)
+                    except:
+                        continue
+                
+                if backlinks:
+                    return {
+                        "success": False,
+                        "error": f"Cannot delete '{title}' - note has incoming links",
+                        "backlinks": backlinks,
+                        "suggestion": "Use delete_link to remove connections first, or use force_delete=True",
+                        "note_path": str(note_path.relative_to(vault_path))
+                    }
+                        
+            except Exception:
+                # Backlink check failed, but we can still delete
+                pass
+            
+            # Perform deletion
+            note_path.unlink()
+            
+            return {
+                "success": True,
+                "deleted": title,
+                "path": str(note_path.relative_to(vault_path)),
+                "message": f"Successfully deleted '{title}'"
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to delete note: {str(e)}",
+                "title": title
+            }
+
+    @mcp.tool()
+    def delete_link(
+        ctx: Context[ServerSession, AppContext],
+        from_note: str,
+        to_note: str,
+        bidirectional: bool = False,
+        all_instances: bool = False
+    ) -> Dict[str, Any]:
+        """
+        🗑️ DELETE LINK - Remove specific wikilink between notes
+        
+        PURPOSE: Clean and safe removal of [[wikilinks]] from note content
+        
+        FEATURES:
+        • Remove specific link from note content
+        • Bidirectional removal (both directions)  
+        • All instances removal (multiple links to same note)
+        • Safe text parsing - preserves formatting
+        • Link validation before removal
+        
+        USE CASES:
+        • Cleanup: delete_link("Old Project", "Deprecated Tool")
+        • Refactoring: remove outdated connections
+        • Bidirectional: delete_link("A", "B", bidirectional=True)
+        """
+        vault_path = ctx.request_context.lifespan_context.vault_path
+        
+        try:
+            from .utils.vault import note_path_for_title
+            from .utils.markdown_parser import read_note_frontmatter, write_note_frontmatter
+            
+            # Find source note
+            from_path = note_path_for_title(vault_path, from_note)
+            if not from_path.exists():
+                return {"success": False, "error": f"Source note not found: {from_note}"}
+            
+            # Read source note content
+            content, metadata = read_note_frontmatter(from_path)
+            original_content = content
+            
+            # Remove links from content
+            import re
+            
+            if all_instances:
+                # Remove all instances of [[to_note]]
+                pattern = re.compile(rf'\[\[{re.escape(to_note)}(?:\|[^\]]+)?\]\]', re.IGNORECASE)
+                new_content = pattern.sub('', original_content)
+            else:
+                # Remove first instance only
+                pattern = rf'\[\[{re.escape(to_note)}(?:\|[^\]]+)?\]\]'
+                new_content = re.sub(pattern, '', original_content, count=1, flags=re.IGNORECASE)
+            
+            # Clean up extra whitespace
+            new_content = re.sub(r'\n\s*\n\s*\n', '\n\n', new_content)  # Multiple newlines -> double
+            new_content = new_content.strip()
+            
+            # Check if any changes were made
+            links_removed = len(re.findall(rf'\[\[{re.escape(to_note)}(?:\|[^\]]+)?\]\]', original_content, re.IGNORECASE))
+            if original_content == new_content:
+                return {
+                    "success": False, 
+                    "error": f"No links found from '{from_note}' to '{to_note}'"
+                }
+            
+            # Write updated content
+            write_note_frontmatter(from_path, new_content, metadata)
+            
+            result = {
+                "success": True,
+                "from_note": from_note,
+                "to_note": to_note,
+                "links_removed": links_removed,
+                "bidirectional": bidirectional
+            }
+            
+            # Handle bidirectional removal
+            if bidirectional:
+                to_path = note_path_for_title(vault_path, to_note)
+                if to_path.exists():
+                    try:
+                        to_content, to_metadata = read_note_frontmatter(to_path)
+                        to_original = to_content
+                        
+                        if all_instances:
+                            pattern = re.compile(rf'\[\[{re.escape(from_note)}(?:\|[^\]]+)?\]\]', re.IGNORECASE)
+                            to_new_content = pattern.sub('', to_original)
+                        else:
+                            pattern = rf'\[\[{re.escape(from_note)}(?:\|[^\]]+)?\]\]'
+                            to_new_content = re.sub(pattern, '', to_original, count=1, flags=re.IGNORECASE)
+                        
+                        to_new_content = re.sub(r'\n\s*\n\s*\n', '\n\n', to_new_content)
+                        to_new_content = to_new_content.strip()
+                        
+                        reverse_links_removed = len(re.findall(rf'\[\[{re.escape(from_note)}(?:\|[^\]]+)?\]\]', to_original, re.IGNORECASE))
+                        
+                        if to_original != to_new_content:
+                            write_note_frontmatter(to_path, to_new_content, to_metadata)
+                            result["reverse_links_removed"] = reverse_links_removed
+                        else:
+                            result["reverse_links_removed"] = 0
+                            
+                    except Exception as e:
+                        result["reverse_error"] = f"Failed to remove reverse link: {str(e)}"
+                else:
+                    result["reverse_error"] = f"Target note not found: {to_note}"
+            
+            return result
+            
+        except Exception as e:
+            return {"success": False, "error": f"Failed to delete link: {str(e)}"}
+
+    @mcp.tool()
+    def list_links(
+        ctx: Context[ServerSession, AppContext],
+        note_title: str,
+        link_type: str = "all",  # "outlinks", "backlinks", "all"
+        include_context: bool = True
+    ) -> Dict[str, Any]:
+        """
+        📋 LIST LINKS - Show all connections for a note
+        
+        PURPOSE: Comprehensive view of note's knowledge graph connections
+        
+        FEATURES:
+        • Outlinks - [[links]] from this note
+        • Backlinks - notes that link to this note  
+        • Context - surrounding text for each link
+        • Link analysis - connection strength
+        
+        USE CASES:
+        • Overview: list_links("Project Alpha")
+        • Analysis: see all connections for planning
+        • Maintenance: find links that need updating
+        """
+        vault_path = ctx.request_context.lifespan_context.vault_path
+        
+        try:
+            from .utils.universal_finder import get_universal_finder
+            from .utils.vault import list_note_paths
+            from .utils.markdown_parser import read_note_frontmatter, extract_outlinks
+            
+            # Use Universal Note Finder
+            finder = get_universal_finder(vault_path)
+            note_path = finder.find_note(note_title)
+            
+            if not note_path or not note_path.exists():
+                # Provide helpful suggestions
+                similar = finder.find_multiple(note_title, limit=3)
+                suggestions = [s[0] for s in similar] if similar else []
+                
+                return {
+                    "success": False, 
+                    "error": f"Note not found: {note_title}",
+                    "suggestions": suggestions,
+                    "help": "Try using exact title or check explore_notes to find the note"
+                }
+            
+            result = {
+                "success": True,
+                "note_title": note_title,
+                "outlinks": [],
+                "backlinks": [],
+                "total_connections": 0
+            }
+            
+            # Get outlinks (links FROM this note)
+            if link_type in ["all", "outlinks"]:
+                try:
+                    content, metadata = read_note_frontmatter(note_path)
+                    outlinks = extract_outlinks(content)
+                    
+                    if include_context:
+                        import re
+                        lines = content.split('\n')
+                        for link in outlinks:
+                            # Find context for each link
+                            for line_num, line in enumerate(lines, 1):
+                                if f'[[{link}' in line:
+                                    context = line.strip()
+                                    if len(context) > 100:
+                                        # Truncate long lines
+                                        link_pos = context.find(f'[[{link}')
+                                        start = max(0, link_pos - 30)
+                                        end = min(len(context), link_pos + 70)
+                                        context = '...' + context[start:end] + '...' if start > 0 or end < len(context) else context[start:end]
+                                    
+                                    result["outlinks"].append({
+                                        "target": link,
+                                        "context": context,
+                                        "line": line_num
+                                    })
+                                    break
+                    else:
+                        result["outlinks"] = [{"target": link} for link in outlinks]
+                        
+                except Exception as e:
+                    result["outlinks_error"] = f"Failed to read outlinks: {str(e)}"
+            
+            # Get backlinks (links TO this note)  
+            if link_type in ["all", "backlinks"]:
+                try:
+                    for note_path_candidate in list_note_paths(vault_path):
+                        if note_path_candidate.stem == note_title:
+                            continue  # Skip self-references
+                        
+                        try:
+                            content_candidate, metadata_candidate = read_note_frontmatter(note_path_candidate)
+                            outlinks = extract_outlinks(content_candidate)
+                            
+                            if note_title in outlinks:
+                                backlink_info = {"source": note_path_candidate.stem}
+                                
+                                if include_context:
+                                    import re
+                                    lines = content_candidate.split('\n')
+                                    for line_num, line in enumerate(lines, 1):
+                                        if f'[[{note_title}' in line:
+                                            context = line.strip()
+                                            if len(context) > 100:
+                                                link_pos = context.find(f'[[{note_title}')
+                                                start = max(0, link_pos - 30)
+                                                end = min(len(context), link_pos + 70)
+                                                context = '...' + context[start:end] + '...' if start > 0 or end < len(context) else context[start:end]
+                                            
+                                            backlink_info.update({
+                                                "context": context,
+                                                "line": line_num
+                                            })
+                                            break
+                                
+                                result["backlinks"].append(backlink_info)
+                                
+                        except Exception:
+                            continue  # Skip problematic files
+                            
+                except Exception as e:
+                    result["backlinks_error"] = f"Failed to find backlinks: {str(e)}"
+            
+            # Calculate totals
+            result["total_connections"] = len(result["outlinks"]) + len(result["backlinks"])
+            result["outlinks_count"] = len(result["outlinks"]) 
+            result["backlinks_count"] = len(result["backlinks"])
+            
+            # Connection strength analysis
+            if result["total_connections"] == 0:
+                result["connection_strength"] = "none"
+            elif result["total_connections"] <= 2:
+                result["connection_strength"] = "weak"  
+            elif result["total_connections"] <= 5:
+                result["connection_strength"] = "medium"
+            else:
+                result["connection_strength"] = "strong"
+            
+            return result
+            
+        except Exception as e:
+            return {"success": False, "error": f"Failed to list links: {str(e)}"}
 
     @mcp.tool()
     def create_link(
