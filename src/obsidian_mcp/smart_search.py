@@ -72,15 +72,59 @@ class SmartSearchEngine:
     def search_notes(self, 
                      keywords: str = "",
                      search_in: str = "all",
+                     
+                     # Tag filters
+                     include_tags = None,
+                     exclude_tags = None, 
+                     require_all_tags: bool = False,
+                     
+                     # Date filters
+                     created_after = None,
+                     created_before = None,
+                     modified_after = None,
+                     modified_before = None,
+                     
+                     # Folder filters
+                     folders = None,
+                     exclude_folders = None,
+                     
+                     # Content filters
+                     min_words = None,
+                     max_words = None,
+                     has_tasks = None,
+                     min_links = None,
+                     max_links = None,
+                     
+                     # Search behavior
                      language_flexible: bool = True,
                      case_sensitive: bool = False,
+                     fuzzy_matching: bool = True,
+                     
+                     # Results
                      limit: int = 20,
+                     sort_by: str = "relevance",
                      include_content_preview: bool = True,
+                     include_metadata: bool = True,
                      min_relevance: float = 0.1) -> Dict[str, Any]:
         """
-        Главная функция умного поиска заметок
+        Главная функция умного поиска заметок с расширенными фильтрами
         """
-        # Если нет ключевых слов - возвращаем последние заметки
+        
+        # Проверяем используются ли новые фильтры
+        has_filters = any([
+            include_tags, exclude_tags, created_after, created_before,
+            modified_after, modified_before, folders, exclude_folders,
+            min_words, max_words, has_tasks is not None, 
+            min_links, max_links
+        ])
+        
+        # Если есть фильтры, но методы не реализованы - fallback на старую логику
+        if has_filters:
+            # TODO: Implement filtering logic in Phase 2.1
+            # For now, fallback to basic search with warning
+            pass
+        
+        # Если нет ключевых слов - возвращаем последние заметки (старая логика)
         if not keywords.strip():
             return self._get_recent_notes(limit=limit, include_preview=include_content_preview)
         

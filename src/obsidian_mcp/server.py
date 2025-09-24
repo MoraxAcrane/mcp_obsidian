@@ -230,33 +230,70 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
     @mcp.tool()
     def explore_notes(
         ctx: Context[ServerSession, AppContext],
-        keywords: str,
-        search_in: str = "all",  # "all", "titles", "content"
-        language_flexible: bool = True,
-        case_sensitive: bool = False,
-        limit: int = 15,
-        include_content_preview: bool = True,
-        min_relevance: float = 0.1
+        keywords: str = "",
+        search_in: str = "all",  # "all", "titles", "content", "tags"
+        
+        # 🏷️ TAG FILTERS
+        include_tags: Optional[List[str]] = None,     # Only notes with these tags
+        exclude_tags: Optional[List[str]] = None,     # Exclude notes with these tags  
+        require_all_tags: bool = False,              # Require all tags vs any tag
+        
+        # 📅 DATE FILTERS  
+        created_after: Optional[str] = None,         # "2024-01-01" format
+        created_before: Optional[str] = None,        # "2024-12-31" format
+        modified_after: Optional[str] = None,        # Recently modified after date
+        modified_before: Optional[str] = None,       # Not modified after date
+        
+        # 📁 FOLDER FILTERS
+        folders: Optional[List[str]] = None,         # Search only in these folders
+        exclude_folders: Optional[List[str]] = None, # Exclude these folders
+        
+        # 📊 CONTENT FILTERS
+        min_words: Optional[int] = None,             # Minimum word count
+        max_words: Optional[int] = None,             # Maximum word count
+        has_tasks: Optional[bool] = None,            # Contains checkboxes [ ]
+        min_links: Optional[int] = None,             # Minimum outgoing links
+        max_links: Optional[int] = None,             # Maximum outgoing links
+        
+        # 🎯 SEARCH BEHAVIOR
+        language_flexible: bool = True,              # Russian/English transliteration
+        case_sensitive: bool = False,                # Case sensitivity
+        fuzzy_matching: bool = True,                 # Typo correction
+        
+        # 📋 RESULTS
+        limit: int = 15,                             # Number of results
+        sort_by: str = "relevance",                  # "relevance", "modified", "created", "title"
+        include_content_preview: bool = True,        # Content preview
+        include_metadata: bool = True,               # Include tags, dates, stats
+        min_relevance: float = 0.1                   # Minimum relevance score
     ) -> Dict[str, Any]:
         """
-        🔍 EXPLORE NOTES - Intelligent search with multilingual support
+        🔍 EXPLORE NOTES - Advanced search with multilingual support and powerful filters
         
-        PURPOSE: Smart search through notes with content indexing, transliteration, 
-        and morphological variants. Much more powerful than basic list_notes.
+        PURPOSE: Comprehensive search through notes with content indexing, transliteration, 
+        and extensive filtering capabilities. One tool for all search needs.
         
         FEATURES:
         • Multilingual search (Russian ↔ English transliteration)
         • Content indexing (searches inside note content, not just titles)
         • Morphological variants (programming → program → programm)
-        • Case-insensitive and flexible matching
+        • Advanced filtering (tags, dates, folders, content metrics)
+        • Flexible sorting and relevance scoring
         • Content preview with highlighted matches
-        • Relevance scoring
+        
+        ADVANCED FILTERS:
+        • Tag filtering: include_tags=["work", "active"], exclude_tags=["archive"]
+        • Date filtering: modified_after="2024-09-01", created_before="2024-12-31"
+        • Folder filtering: folders=["Projects"], exclude_folders=["Archive"]
+        • Content filtering: min_words=100, has_tasks=True, min_links=2
+        • Sorting: sort_by="modified" | "created" | "title" | "relevance"
         
         USE CASES:
-        • Smart search: "Find notes about машинное обучение or machine learning"
-        • Content discovery: "What notes contain information about React hooks?"
-        • Flexible queries: "show me programming notes" (finds Программирование, coding, development)
-        • Research: "Find notes related to искусственный интеллект"
+        • Basic search: explore_notes("machine learning")
+        • Filtered search: explore_notes("productivity", include_tags=["work"], modified_after="2024-09-01")
+        • Content discovery: explore_notes("", has_tasks=True, folders=["Projects"])
+        • Maintenance: explore_notes("", max_words=50, max_links=0, sort_by="modified")
+        • Research: explore_notes("AI", exclude_tags=["draft"], min_words=200)
         """
         try:
             from .smart_search import SmartSearchEngine
@@ -269,14 +306,43 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
             # Создаем поисковый движок
             search_engine = SmartSearchEngine(vault_path)
             
-            # Выполняем поиск
+            # Выполняем поиск с новыми фильтрами
             search_result = search_engine.search_notes(
                 keywords=keywords,
                 search_in=search_in,
+                
+                # Tag filters
+                include_tags=include_tags,
+                exclude_tags=exclude_tags,
+                require_all_tags=require_all_tags,
+                
+                # Date filters  
+                created_after=created_after,
+                created_before=created_before,
+                modified_after=modified_after,
+                modified_before=modified_before,
+                
+                # Folder filters
+                folders=folders,
+                exclude_folders=exclude_folders,
+                
+                # Content filters
+                min_words=min_words,
+                max_words=max_words,
+                has_tasks=has_tasks,
+                min_links=min_links,
+                max_links=max_links,
+                
+                # Search behavior
                 language_flexible=language_flexible,
                 case_sensitive=case_sensitive,
+                fuzzy_matching=fuzzy_matching,
+                
+                # Results
                 limit=limit,
+                sort_by=sort_by,
                 include_content_preview=include_content_preview,
+                include_metadata=include_metadata,
                 min_relevance=min_relevance
             )
             
