@@ -42,7 +42,7 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
     def list_notes(
         ctx: Context[ServerSession, AppContext], 
         folder: Optional[str] = None, 
-        limit: Optional[int] = None
+        limit: Optional[float] = None  # Changed from int to float for Cursor IDE compatibility
     ) -> Dict[str, Any]:
         """
         📋 LIST NOTES - Recent notes list (limited for safety)
@@ -58,10 +58,11 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         """
         vault_path = ctx.request_context.lifespan_context.vault_path
         
-        # Fix type validation issue - convert any number type to int
+        # Fix Cursor IDE compatibility: convert number/float to int
+        # Cursor IDE sends JavaScript numbers as float, but we need int internally
         if limit is not None:
             try:
-                limit = int(limit)  # Force conversion from float to int (fixes Cursor IDE issue)
+                limit = int(float(limit))  # Handle both int and float from Cursor IDE
             except (ValueError, TypeError):
                 limit = 20  # Fallback to default
         
@@ -683,19 +684,19 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         exclude_folders: Optional[List[str]] = None, # Exclude these folders
         
         # 📊 CONTENT FILTERS
-        min_words: Optional[int] = None,             # Minimum word count
-        max_words: Optional[int] = None,             # Maximum word count
+        min_words: Optional[float] = None,           # Minimum word count (float for Cursor compatibility)
+        max_words: Optional[float] = None,           # Maximum word count (float for Cursor compatibility)  
         has_tasks: Optional[bool] = None,            # Contains checkboxes [ ]
-        min_links: Optional[int] = None,             # Minimum outgoing links
-        max_links: Optional[int] = None,             # Maximum outgoing links
+        min_links: Optional[float] = None,           # Minimum outgoing links (float for Cursor compatibility)
+        max_links: Optional[float] = None,           # Maximum outgoing links (float for Cursor compatibility)
         
         # 🎯 SEARCH BEHAVIOR
         language_flexible: bool = True,              # Russian/English transliteration
         case_sensitive: bool = False,                # Case sensitivity
         fuzzy_matching: bool = True,                 # Typo correction
         
-        # 📋 RESULTS
-        limit: int = 15,                             # Number of results
+        # 📋 RESULTS  
+        limit: float = 15,                           # Number of results (float for Cursor compatibility)
         sort_by: str = "relevance",                  # "relevance", "modified", "created", "title"
         include_content_preview: bool = True,        # Content preview
         include_metadata: bool = True,               # Include tags, dates, stats
@@ -734,7 +735,8 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
             
             vault_path = ctx.request_context.lifespan_context.vault_path
             
-            # Ограничиваем количество результатов
+            # Convert float to int and ensure limit is within bounds
+            limit = int(float(limit))  # Handle Cursor IDE float numbers
             limit = min(limit, 30)
             
             # Создаем поисковый движок
