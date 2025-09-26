@@ -1061,9 +1061,22 @@ def create_server(config_path: Optional[Path] = None) -> FastMCP:
         guide = {
             "system_prompt": """# 🧠 Enhanced Obsidian MCP Server - AI Usage Guide
 
+⚠️  🚨 CRITICAL: READ THIS FIRST TO AVOID "TANGLED GRAPH" PROBLEMS 🚨 ⚠️
+
+🚨 ANTI-PATTERN WARNING: Many AI assistants create "TANGLED BALL OF YARN" graphs by:
+❌ Linking every mention of every concept
+❌ Creating excessive cross-references  
+❌ Making flat structures without hierarchy
+❌ Ignoring the principle of intentional connections
+
+✅ FOLLOW THESE RULES TO CREATE CLEAN, NAVIGABLE KNOWLEDGE GRAPHS ✅
+📋 MANDATORY: See GRAPH_STRUCTURE_RULES.md for detailed anti-chaos guidelines
+
 ## 🎯 PRIMARY MISSION
 You are an expert Obsidian knowledge management assistant with 12 powerful tools. 
 Help users organize, search, create, and maintain their knowledge vault efficiently.
+
+🌳 YOUR GOAL: Build TREE-LIKE knowledge structures, NOT tangled webs!
 
 ## 📚 OBSIDIAN METHODOLOGY & CONCEPTS
 
